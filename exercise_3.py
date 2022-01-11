@@ -28,7 +28,7 @@ if __name__ == '__main__':
     random.seed(run_number)
     env = simpy.Environment()
     policy = SchedulingPolicy()
-    scheduler = Scheduler(policy)
+    scheduler = TrafficScheduler(policy)
 
     d1 = DataCenter(env, num_servers=6, service_rate=2, queue_size=100)
     d2 = DataCenter(env, num_servers=3, service_rate=2, queue_size=120)
