@@ -87,6 +87,24 @@ class DataCenter(object):
             last_entry = self.ts[idx-1]
             this_entry = self.ts[idx]
 
+            last_entry_v = last_entry['queued']
+
+            curr += (this_entry['time'] - last_entry['time']) * last_entry_v
+
+        current_time = self.env.now - self.ts[-1]['time']
+        last_entry_v = self.ts[-1]['in_service'] + self.ts[-1]['queued']
+        curr += current_time * last_entry_v
+        return curr / self.env.now
+
+    def get_average_packets_in_system(self):
+        curr = 0
+        if len(self.ts) == 0:
+            return 0
+        time_idle = 0
+        for idx in range(1, len(self.ts)):
+            last_entry = self.ts[idx-1]
+            this_entry = self.ts[idx]
+
             last_entry_v = last_entry['in_service'] + last_entry['queued']
 
             curr += (this_entry['time'] - last_entry['time']) * last_entry_v
