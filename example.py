@@ -8,7 +8,7 @@ from Stats import Stats
 
 
 class SchedulingPolicy:
-    def schedule(self, packet, destinations):
+    def schedule(self, request, destinations):
         return destinations[0].id
 
 
@@ -19,11 +19,11 @@ if __name__ == '__main__':
     policy = SchedulingPolicy()
     scheduler = TrafficScheduler(policy)
 
-    d1 = DataCenter(env, service_rate=4, queue_size=40)
+    d1 = DataCenter(env, service_rate=3, resource_capacity=4, has_queue=True)
 
     scheduler.set_destinations([d1])
 
-    e1 = EdgeNode(env, scheduler, arrival_rate=4, min_packet_size=2, max_packet_size=3)
+    e1 = EdgeNode(env, scheduler, arrival_rate=4, min_demand=2, max_demand=2)
 
     env.run(until=100)
 

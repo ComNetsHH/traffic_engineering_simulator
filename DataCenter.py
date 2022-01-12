@@ -1,61 +1,47 @@
 import random
-from Server import Server
+from Process import Process
 
 class DataCenter(object):
     index = 0
-    def __init__(self, env, num_servers = 1, service_rate= 10, queue_size=100, verbose=False):
+    def __init__(self, env, resource_capacity, service_rate=10, has_queue=False, verbose=False):
         self.env = env
         self.verbose = verbose
         self.id = f'data_center_{DataCenter.index}'
         DataCenter.index += 1
 
+        self.service_rate = service_rate
+        self.has_queue = has_queue
         self.queue = []
-        self.queue_size = queue_size
+        self.resource_capacity = resource_capacity
 
         self.ts = []
         self.num_dropped = 0
         self.num_processed = 0
+        self.num_queued = 0
         self.num_received = 0
 
         self.delays = []
-        self.servers = []
-
-        for i in range(num_servers):
-            s = Server(env, self, service_rate, verbose)
-            self.servers.append(s)
+        self.processes = []
 
         self.record_state()
 
     def get_delays(self):
-        delays = []
+        return self.delays
 
-        for s in self.servers:
-            delays += s.delays
-
-        return delays
-
-    def get_queue_size(self):
+    def get_used_capacity(self):
         result = 0
-        for pkt in self.queue:
-            result += pkt['size']
+        for p in self.processes:
+            result += p.current_request['demand']
         return result
 
-    def has_idle_server(self):
-        for s in self.servers:
-            if s.is_idle():
-                return True
-        return False
-
+    def get_spare_capacity(self):
+        return self.resource_capacity - self.get_used_capacity()
 
     def record_state(self):
-        in_service = 0
-        for s in self.servers:
-            if not s.is_idle():
-                in_service += 1
         self.ts.append({
             'time': self.env.now,
-            'queued': self.get_queue_size(),
-            'in_service': in_service
+            'queued': len(self.queue),
+            'in_service': len(self.processes)
         })
 
     def get_utilization(self):
@@ -69,10 +55,7 @@ class DataCenter(object):
             if last_entry['in_service'] == 0 and this_entry['in_service'] == 0:
                 time_idle += this_entry['time'] - last_entry['time']
 
-        is_idle = True
-        for s in self.servers:
-            if not s.is_idle():
-                is_idle = False
+        is_idle = len(self.processes) == 0
 
         current_idle_time = 0 if not is_idle else self.env.now - self.ts[-1]['time']
         time_idle += current_idle_time
@@ -96,7 +79,7 @@ class DataCenter(object):
         curr += current_time * last_entry_v
         return curr / self.env.now
 
-    def get_average_packets_in_system(self):
+    def get_average_requests_in_system(self):
         curr = 0
         if len(self.ts) == 0:
             return 0
@@ -114,34 +97,47 @@ class DataCenter(object):
         curr += current_time * last_entry_v
         return curr / self.env.now
 
-    def request_packet(self, server):
-        self.record_state()
-        if len(self.queue) == 0:
-            return None
-        pkt = self.queue.pop(0)
-        self.num_processed += 1
-        self.record_state()
-        return pkt
+    def on_complete(self, process):
+        self.processes = [p for p in self.processes if p.id != process.id]
+        self.delays += process.delays
 
-    def on_receive(self, packet):
+        if len(self.queue) == 0:
+            return
+
+        current_request = self.queue[0]
+        while self.get_spare_capacity() >= current_request['demand'] and len(self.queue) > 0:
+            p = Process(self.env, self, self.service_rate, self.verbose)
+            p.on_receive(current_request)
+            self.processes.append(p)
+            self.num_processed += 1
+            self.queue.pop(0)
+            if len(self.queue) == 0:
+                return
+            current_request = self.queue[0]
+            
+    def on_receive(self, request):
         self.record_state()
         self.num_received += 1
-        # 1) if any server is idle, put packet there
-        for s in self.servers:
-            if s.is_idle():
-                s.on_receive(packet)
-                self.num_processed += 1
-                self.record_state()
-                return
 
-        # 2) if queue is not full, put it there
-        current_queue_size = self.get_queue_size()
-        if current_queue_size + packet['size'] <= self.queue_size:
-            self.queue.append(packet)
+        if request['demand'] > self.resource_capacity:
+            self.num_dropped += 1
+            return
+
+        spare_capacity = self.resource_capacity - self.get_used_capacity()
+        if spare_capacity >= request['demand']:
+            p = Process(self.env, self, self.service_rate, self.verbose)
+            p.on_receive(request)
+            self.processes.append(p)
+            self.num_processed += 1
             self.record_state()
             return
 
-        # 3) else drop it
+        if self.has_queue:
+            self.queue.append(request)
+            self.num_queued += 1
+            self.record_state()
+            return
+
         self.num_dropped += 1
 
 

@@ -152,3 +152,4 @@ cython_debug/
 #.idea/
 
 fiddle.py
+.DS_Store

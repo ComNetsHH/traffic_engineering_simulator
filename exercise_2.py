@@ -12,8 +12,8 @@ class SchedulingPolicy:
     def __init__(self):
         self.idx = 1
 
-    def schedule(self, packet, destinations):
-        idle_destinations = [d for d in destinations if d.has_idle_server()]
+    def schedule(self, request, destinations):
+        idle_destinations = [d for d in destinations if d.get_spare_capacity() > 0]
         if(len(idle_destinations) == 0):
             idx = random.randint(0, len(destinations)-1)
             return destinations[idx].id
@@ -29,14 +29,14 @@ if __name__ == '__main__':
     policy = SchedulingPolicy()
     scheduler = TrafficScheduler(policy)
 
-    d1 = DataCenter(env, num_servers=2, service_rate=1, queue_size=0)
-    d2 = DataCenter(env, num_servers=2, service_rate=1, queue_size=0)
+    d1 = DataCenter(env, resource_capacity=2, service_rate=1, has_queue=False)
+    d2 = DataCenter(env, resource_capacity=2, service_rate=1, has_queue=False)
 
     scheduler.set_destinations([d1, d2])
 
-    e1 = EdgeNode(env, scheduler, arrival_rate=3, min_packet_size=1, max_packet_size=1)
+    e1 = EdgeNode(env, scheduler, arrival_rate=3, min_demand=1, max_demand=1)
 
-    env.run(until=1000)
+    env.run(until=2000)
 
     Stats.set_experiment_name('exercise_2')
     Stats.evaluate([d1, d2], verbose=True)

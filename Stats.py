@@ -15,15 +15,15 @@ class Stats(object):
         for d in data_centers:
             if verbose:
                 print(f'DataCenter<{d.id}>')
-                print(f'  Packets Received: {d.num_received}')
-                print(f'  Packets Processed: {d.num_processed}')
-                print(f'  Packets Dropped: {d.num_dropped}')
+                print(f'  Requests Received: {d.num_received}')
+                print(f'  Requests Processed: {d.num_processed}')
+                print(f'  Requests Dropped: {d.num_dropped}')
                 print(f'  Utilization: {(d.get_utilization()*100):.2f}%')
-                print(f'  Avg Packets in the System: {d.get_average_packets_in_system():.2f}')
-                print(f'  Avg Packets in the Queue: {d.get_average_queue_length():.2f}')
+                print(f'  Avg Requests in the System: {d.get_average_requests_in_system():.2f}')
+                print(f'  Avg Requests in the Queue: {d.get_average_queue_length():.2f}')
                 print(f'  Avg Delay: {np.mean(d.get_delays()):.2f}s')
                 print('')
-            Stats.plot_ts([x['time'] for x in d.ts], [x['in_service'] + x['queued'] for x in d.ts], 'Queue Size', 'Time [s]', 'Queue', f'queue_size_{d.id}')
+            Stats.plot_ts([x['time'] for x in d.ts], [x['in_service'] + x['queued'] for x in d.ts], 'Number of Requests in the Data Center', 'Time [s]', 'Number of Requests', f'requests_ts_{d.id}')
             Stats.plot_histogram(d.get_delays(), 'Delay Distribution', 'Delay [s]', 'Probability', f'delay_dist_{d.id}')
 
             total_received += d.num_received
